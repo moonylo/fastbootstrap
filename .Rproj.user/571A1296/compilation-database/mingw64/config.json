@@ -1,0 +1,19 @@
+{
+    "args": [
+        "-std=gnu++14",
+        "-IC:/Users/stoll/R/R-4.2.3/include",
+        "-DNDEBUG",
+        "-IC:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include",
+        "-IC:/Users/stoll/R/R-4.2.3/library/Rcpp/include",
+        "-DEIGEN_DONT_VECTORIZE",
+        "-nostdinc",
+        "-include",
+        "C:/Users/stoll/Documents/GitHub/fastbootstrap/.Rproj.user/571A1296/compilation-database/mingw64/cpp-definitions.h"
+    ],
+    "pch": "Rcpp",
+    "is_cpp": true,
+    "hash": "16838352051683834428",
+    "compiler": "17486434899767519736",
+    "rversion": "4.2.3",
+    "dbversion": 4
+}

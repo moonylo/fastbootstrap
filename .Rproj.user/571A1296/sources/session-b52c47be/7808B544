@@ -1,0 +1,26 @@
+{
+    "id": "7808B544",
+    "path": "~/GitHub/fastbootstrap/inst/include/random_generator/random_generator.h",
+    "project_path": "inst/include/random_generator/random_generator.h",
+    "type": "h",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1684007702595.0,
+    "source_on_save": false,
+    "relative_order": 5,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "4,60",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1683832184,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1683832184,
+    "read_only": false,
+    "read_only_alternatives": []
+}

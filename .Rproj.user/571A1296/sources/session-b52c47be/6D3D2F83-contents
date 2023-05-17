@@ -1,0 +1,111 @@
+require(tidyverse)
+require(fastbootstrap)
+require(ggplot2)
+bootstrap_samples <- 10000L
+
+bs_mgr <- new(opencl_bootstrap_manager_float, bootstrap_samples, 0L)
+# bs_mgr$print_opencl_devices()
+
+
+df <- data.frame(x1 = rnorm(5000, 50))
+a <- bs_mgr$get_bootstrap_means(df$x1)
+bs_classic <- replicate(bootstrap_samples, mean(sample(df$x1, replace = TRUE)))
+plot(density(a), col = "red")
+lines(density(bs_classic))
+
+
+# df <- data.frame(x1 = rnorm(1000000, 50), x2 = rnorm(1000000, 50), x3 = rnorm(1000000, 50), x4 = rnorm(1000000, 50))
+# df <- data.frame(x1 = rnorm(1000000, 50))
+df <- data.frame(rnorm(500000, 50, 20), rnorm(500000, 100, 20), rnorm(500000, 150, 20), rnorm(500000, 200, 20), rnorm(500000, 250, 20), rnorm(500000, 300, 20))
+# df <- data.frame(rnorm(50000, 50, 20), rnorm(50000, 100, 20), rnorm(50000, 150, 20), rnorm(50000, 200, 20), rnorm(50000, 250, 20), rnorm(50000, 300, 20))
+# df <- data.frame(rnorm(5000000, 50, 20), rnorm(5000000, 100, 20), rnorm(5000000, 150, 20), rnorm(5000000, 200, 20), rnorm(5000000, 250, 20), rnorm(5000000, 300, 20))
+# df <- data.frame(x1 = rnorm(1000, 50))
+# df <- data.frame(x1 = rnorm(1000000, 50), x2 = rnorm(1000000, 100), x3= rnorm(1000000, 100), x4 = rnorm(1000000, 100))
+# df <- data.frame(x1 = rnorm(50*2^5, mean = 2, sd = 1))
+# df <- data.frame(x1 = rnorm(10, 50, sd = 10))
+# df <- data.frame(x1 = 1:10)
+# df[sample(1:nrow(df), nrow(df) / 10),1:ncol(df)] <- NA
+
+
+
+start <- Sys.time()
+for(i in 1:ncol(df)) {
+  a <- bs_mgr$get_bootstrap_means(df[,i])
+}
+end <- Sys.time()
+end - start
+max(a)
+
+
+
+
+result <- data.frame()
+for (local_item_size in 32 * (1:10)) {
+  bs_mgr$set_local_item_size(local_item_size)
+  start <- Sys.time()
+  for(i in 1:ncol(df)) {
+    a <- bs_mgr$get_bootstrap_means(df[,i])
+  }
+  end <- Sys.time()
+  result <- result %>% 
+    bind_rows(
+      tibble(
+        local_item_size = local_item_size
+        , time = as.numeric(end - start)
+      )
+    )
+}
+
+result %>% 
+  ggplot(aes(x = local_item_size, y = time)) +
+  geom_point(size = 5) +
+  theme_bw()
+
+
+
+
+
+
+start <- Sys.time()
+a <- cuda_bootstrap(df, bootstrap_samples = bootstrap_samples, verbose = FALSE, precision = "double")
+end <- Sys.time()
+end - start
+
+
+########
+
+
+counter <- 0
+fails <- 0
+fails_shortcut <- 0
+
+for(i in 1:1000){
+  print(i)
+  counter = counter + 1;
+
+  x <- rnorm(5000, mean = 50)
+  y <- rnorm(5000, mean = 50)
+
+  bs_x <- bootstrap_with_cuda(x)
+  bs_y <- bootstrap_with_cuda(y)
+  qs <- quantile(bs_x / bs_y, c(0.025, 0.975))
+  if(qs[1] > 1 | qs[2] < 1){
+    fails <- fails + 1
+  }
+
+  bs_x_shortcut <- bootstrap_with_cuda(x, sqrt(10000) * 10)
+  bs_y_shortcut <- bootstrap_with_cuda(y, sqrt(10000) * 10)
+  div_shortcut <- sapply(bs_x_shortcut, function(v){ v / bs_y_shortcut})
+  qs_shortcut <- quantile(div_shortcut, c(0.025, 0.975))
+  if(qs_shortcut[1] > 1 | qs_shortcut[2] < 1){
+    fails_shortcut <- fails_shortcut + 1
+  }
+}
+
+print(fails / counter)
+print(fails_shortcut / counter)
+
+
+
+plot(density(bs_x / bs_y))
+lines(density(div_low), col = "red")
