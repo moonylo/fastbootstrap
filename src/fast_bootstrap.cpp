@@ -1,4 +1,8 @@
 #include <Rcpp.h>
+
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#define CL_TARGET_OPENCL_VERSION 120
+
 #include <CL/cl.h>
 #include <random_generator/random_generator.h>
 #include <opencl_utilities.h>
@@ -8,8 +12,6 @@
 #include <stdio.h>
 #include <cmath>
 #include <unistd.h>
-
-#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 
 template <typename T>
 class opencl_bootstrap_manager {

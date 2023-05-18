@@ -133,7 +133,6 @@ kernel_source get_kernel_source()
 
 void print_opencl_devices() {
   
-  int i, j;
   char* value;
   size_t valueSize;
   cl_uint platformCount;
@@ -147,7 +146,7 @@ void print_opencl_devices() {
   platforms = (cl_platform_id*) malloc(sizeof(cl_platform_id) * platformCount);
   clGetPlatformIDs(platformCount, platforms, NULL);
   
-  for (i = 0; i < platformCount; i++) {
+  for (unsigned int i = 0; i < platformCount; i++) {
     
     // get all devices
     clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &deviceCount);
@@ -155,7 +154,7 @@ void print_opencl_devices() {
     clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, deviceCount, devices, NULL);
     
     // for each device print critical attributes
-    for (j = 0; j < deviceCount; j++) {
+    for (unsigned int j = 0; j < deviceCount; j++) {
       
       // print device name
       clGetDeviceInfo(devices[j], CL_DEVICE_NAME, 0, NULL, &valueSize);
@@ -202,7 +201,6 @@ void print_opencl_devices() {
 
 void print_opencl_platforms() {
   
-  int i, j;
   char* info;
   size_t infoSize;
   cl_uint platformCount;
@@ -220,11 +218,11 @@ void print_opencl_platforms() {
   clGetPlatformIDs(platformCount, platforms, NULL);
   
   // for each platform print all attributes
-  for (i = 0; i < platformCount; i++) {
+  for (unsigned int i = 0; i < platformCount; i++) {
     
     printf("\n %d. Platform \n", i+1);
     
-    for (j = 0; j < attributeCount; j++) {
+    for (unsigned int j = 0; j < attributeCount; j++) {
       
       // get platform attribute value size
       clGetPlatformInfo(platforms[i], attributeTypes[j], 0, NULL, &infoSize);
