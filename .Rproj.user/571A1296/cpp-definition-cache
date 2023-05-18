@@ -13456,7 +13456,7 @@
     },
     {
         "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/src/fast_bootstrap.cpp",
-        "file_last_write": 1684349247.0,
+        "file_last_write": 1684437317.0,
         "definitions": [
             {
                 "usr": "c:fast_bootstrap.cpp@247@macro@CL_USE_DEPRECATED_OPENCL_1_2_APIS",
@@ -13484,7 +13484,7 @@
                 "parent_name": "",
                 "name": "test_rand_gen_host(const int, const int)",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/src/fast_bootstrap.cpp",
-                "line": 155,
+                "line": 172,
                 "column": 21,
                 "hidden": false
             },
@@ -13494,7 +13494,7 @@
                 "parent_name": "",
                 "name": "opencl_bootstrap_manager_float",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/src/fast_bootstrap.cpp",
-                "line": 165,
+                "line": 182,
                 "column": 41,
                 "hidden": false
             }

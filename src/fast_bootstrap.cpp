@@ -26,23 +26,40 @@ class opencl_bootstrap_manager {
       global_item_size = (size_t) local_item_size * ceil( ((float)bootstrap_samples) / ((float)local_item_size) );
     }
 
-    Rcpp::NumericVector get_bootstrap_means(Rcpp::NumericVector x) {
-      const int nr_of_values = x.length();
-      float* x_h = new float[nr_of_values];
-      for(int i = 0; i < nr_of_values; i++) {
-        x_h[i] = (float) x[i];
-      }
-      float* out_h = new float[bootstrap_samples];
-      
-      calc_bootstrap(x_h, out_h, nr_of_values);
-
+    Rcpp::NumericVector get_bootstrapped_means(Rcpp::NumericVector x) {
       Rcpp::NumericVector out_r(bootstrap_samples);
-      for(int i = 0; i < bootstrap_samples; i++) {
-        out_r[i] = (double) out_h[i];
+      
+      int nr_of_values = x.length();
+      int nr_of_values_not_na = nr_of_values;
+      T* h_values = new T[nr_of_values]();
+      int idx = 0;
+      for(int i = 0; i < nr_of_values; i++) {
+        if (Rcpp::NumericVector::is_na(x[i])) {
+          nr_of_values_not_na--;
+        } else {
+          h_values[idx] = x[i];
+          idx++;
+        }
+      }
+      if (nr_of_values_not_na == 0) {
+        for(int i = 0; i < bootstrap_samples; i++) {
+          out_r[i] = Rcpp::NumericVector::get_na();
+        }
+        return(out_r);
       }
       
-      delete [] x_h;
-      delete [] out_h;
+      
+      T* h_out = new T[bootstrap_samples];
+      
+      calc_bootstrap(h_values, h_out, nr_of_values_not_na);
+
+      
+      for(int i = 0; i < bootstrap_samples; i++) {
+        out_r[i] = h_out[i];
+      }
+      
+      delete [] h_values;
+      delete [] h_out;
       
       return(out_r);
     }
@@ -130,7 +147,7 @@ class opencl_bootstrap_manager {
       
       CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 0, sizeof(cl_mem), (void *)&buffer_rand_states));
       CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 1, sizeof(int), (void *)&bootstrap_samples));
-      CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 4, sizeof(cl_mem), (void *)&buffer_output));
+      CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 2, sizeof(cl_mem), (void *)&buffer_output));
       
     }
     
@@ -138,16 +155,16 @@ class opencl_bootstrap_manager {
       
       cl_int err;
 
-      cl_mem buffer_values = clCreateBuffer(context, CL_MEM_READ_ONLY, nr_of_values * sizeof(T), NULL, &err);
+      cl_mem d_values = clCreateBuffer(context, CL_MEM_READ_ONLY, nr_of_values * sizeof(T), NULL, &err);
       CHECK_CL_ERROR_AFTER(err);
 
-      CHECK_CL_ERROR(clEnqueueWriteBuffer(command_queue, buffer_values, CL_TRUE, 0, nr_of_values * sizeof(T), h_values, 0, NULL, NULL));
-      CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 2, sizeof(cl_mem), (void *)&buffer_values));
-      CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 3, sizeof(int), (void *)&nr_of_values));
+      CHECK_CL_ERROR(clEnqueueWriteBuffer(command_queue, d_values, CL_TRUE, 0, nr_of_values * sizeof(T), h_values, 0, NULL, NULL));
+      CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 3, sizeof(cl_mem), (void *)&d_values));
+      CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 4, sizeof(int), (void *)&nr_of_values));
       CHECK_CL_ERROR(clEnqueueNDRangeKernel(command_queue, bootstrap_kernel, 1, NULL, &global_item_size, &local_item_size, 0, NULL, NULL));
       CHECK_CL_ERROR(clEnqueueReadBuffer(command_queue, buffer_output, CL_TRUE, 0, bootstrap_samples * sizeof(T), h_output, 0, NULL, NULL));
       
-      CHECK_CL_ERROR(clReleaseMemObject(buffer_values));
+      CHECK_CL_ERROR(clReleaseMemObject(d_values));
     }
 };
 
@@ -169,7 +186,7 @@ RCPP_MODULE(opencl_bootstrap_manager_float) {
   Rcpp::class_<opencl_bootstrap_manager_float>("opencl_bootstrap_manager_float")
   
   .constructor<int,int>()
-  .method("get_bootstrap_means", &opencl_bootstrap_manager_float::get_bootstrap_means, "get bootstrap mean samples for numeric vector")
+  .method("get_bootstrapped_means", &opencl_bootstrap_manager_float::get_bootstrapped_means, "get bootstrapped means for numeric vector")
   .method("set_local_item_size" ,&opencl_bootstrap_manager_float::set_local_item_size, "set opencl local item size (default is 32)")
   ;
 }

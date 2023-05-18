@@ -43,14 +43,14 @@ double rand_uniform_double(xorwow_state * state)
 }
 
 
-__kernel void bootstrap_kernel(__global xorwow_state* rand_states, const int bootstrap_samples, __global float *h_values, const int nr_of_values, __global float *output) {
+__kernel void bootstrap_kernel(__global xorwow_state* rand_states, const int bootstrap_samples, __global float *output, __global float *values, const int nr_of_values) {
     int i = get_global_id(0);
     float sum = 0;
 
     if(i < bootstrap_samples) {
       xorwow_state local_xorwow_state = rand_states[i];
       for(int j = 0; j < nr_of_values; j++) {
-        sum += h_values[(int) floor(rand_uniform(&local_xorwow_state) * nr_of_values + 0.999999 - 1)];
+        sum += values[(int) floor(rand_uniform(&local_xorwow_state) * nr_of_values + 0.999999 - 1)];
       }
       output[i] = sum / nr_of_values;
     }
