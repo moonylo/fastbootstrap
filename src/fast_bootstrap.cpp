@@ -4,7 +4,6 @@
 #define CL_TARGET_OPENCL_VERSION 120
 
 #include <CL/cl.h>
-#include <random_generator/random_generator.h>
 #include <opencl_utilities.h>
 #include <fstream>
 #include <string>
@@ -12,6 +11,11 @@
 #include <stdio.h>
 #include <cmath>
 #include <unistd.h>
+
+typedef struct t_xorwow_state {
+  cl_uint x[5];
+  cl_uint d;
+} xorwow_state;
 
 template <typename T>
 class opencl_bootstrap_manager {
@@ -56,24 +60,14 @@ class opencl_bootstrap_manager {
     };
     
     void cleanup_device() {
-      delete[] rand_states;
       CHECK_CL_ERROR(clFinish(command_queue));
       CHECK_CL_ERROR(clReleaseCommandQueue(command_queue));
       CHECK_CL_ERROR(clReleaseProgram(program));
       CHECK_CL_ERROR(clReleaseContext(context));
       CHECK_CL_ERROR(clReleaseKernel(bootstrap_kernel));
+      CHECK_CL_ERROR(clReleaseKernel(init_xorwow_kernel_kernel));
       CHECK_CL_ERROR(clReleaseMemObject(buffer_rand_states));
       CHECK_CL_ERROR(clReleaseMemObject(buffer_output));
-    }
-    
-    std::vector<unsigned int> test_rand_gen_host(const int n = 10, const int seed = 0) {
-      std::vector<unsigned int> output(n);
-      xorwow_state *state = (xorwow_state*)malloc(n * sizeof(xorwow_state));
-      for(int i = 0; i < n; i++) {
-        init_xorwow(state + i, seed, i);
-        output[i] = rand(state + i);
-      }
-      return(output);
     }
     
     std::vector<unsigned int> test_rand_gen_device(int n = 10) {
@@ -100,7 +94,6 @@ class opencl_bootstrap_manager {
     size_t global_item_size;
     size_t local_item_size;
     kernel_source kernel_source_code;
-    xorwow_state* rand_states;
     cl_program program;
     cl_context context;
     cl_kernel bootstrap_kernel;
@@ -122,13 +115,6 @@ class opencl_bootstrap_manager {
     
     void set_kernel_source() {
       kernel_source_code = get_kernel_source("inst/include/kernels.cl");
-    }
-    
-    void init_rand_states_host() {
-      rand_states = new xorwow_state[nr_bootstraps];
-      for(int i = 0; i < nr_bootstraps; i++) {
-        init_xorwow(rand_states + i, seed, (unsigned long long) i);
-      }
     }
     
     void init_rand_states_device() {
@@ -172,11 +158,6 @@ class opencl_bootstrap_manager {
       buffer_output = clCreateBuffer(context, CL_MEM_WRITE_ONLY, nr_bootstraps * sizeof(T), NULL, &err);
       CHECK_CL_ERROR_AFTER(err);
       
-      //init_rand_states_host();
-      //buffer_rand_states = clCreateBuffer(context, CL_MEM_READ_ONLY, nr_bootstraps * sizeof(xorwow_state), NULL, &err);
-      //CHECK_CL_ERROR_AFTER(err);
-      //CHECK_CL_ERROR(clEnqueueWriteBuffer(command_queue, buffer_rand_states, CL_TRUE, 0, nr_bootstraps * sizeof(xorwow_state), rand_states, 0, NULL, NULL));
-      
       init_rand_states_device();
       
       CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 0, sizeof(cl_mem), (void *)&buffer_rand_states));
@@ -215,7 +196,6 @@ RCPP_MODULE(opencl_bootstrap_manager_float) {
   .method("get_bootstrapped_means", &opencl_bootstrap_manager_float::get_bootstrapped_means, "get bootstrapped means for numeric vector")
   .method("set_local_item_size" ,&opencl_bootstrap_manager_float::set_local_item_size, "set opencl local item size (default is 32)")
   .method("set_parameters", &opencl_bootstrap_manager_float::set_parameters, "set the nr of bootstrap samples and the seed")
-  .method("test_rand_gen_host", &opencl_bootstrap_manager_float::test_rand_gen_host, "test random numbers generated from host")
   .method("test_rand_gen_device", &opencl_bootstrap_manager_float::test_rand_gen_device, "test random numbers generated from device")
   .finalizer(finalizer_opencl_bootstrap_manager )
   ;

@@ -1,4 +1,3 @@
-#pragma once
 #include <CL/cl.h>
 
 #define MAX_SOURCE_SIZE (0x900000) // for reading in kernels

@@ -4,144 +4,6 @@
 #define PRECALC_BLOCK_MASK ((1<<PRECALC_BLOCK_SIZE)-1)
 
 
-typedef struct t_xorwow_state {
-  unsigned int x[5];
-  unsigned int d;
-} xorwow_state;
-
-void matvec_inplace(unsigned int *vector, unsigned int *matrix)
-{
-  const int N = 5;
-  unsigned int result[N] = { 0 };
-  for(int i = 0; i < N; i++) {
-    for(int j = 0; j < 32; j++) {
-      if(vector[i] & (1 << j)) {
-        for(int k = 0; k < N; k++) {
-          result[k] ^= matrix[N * (i * 32 + j) + k];
-        }
-      }
-    }
-  }
-  for(int i = 0; i < N; i++) {
-    vector[i] = result[i];
-  }
-}
-
-unsigned int rand_kernel(xorwow_state *state) {
-  unsigned int t;
-  t = (state->x[0] ^ (state->x[0] >> 2));
-  state->x[0] = state->x[1];
-  state->x[1] = state->x[2];
-  state->x[2] = state->x[3];
-  state->x[3] = state->x[4];
-  state->x[4] = (state->x[4] ^ (state->x[4] <<4)) ^ (t ^ (t << 1));
-  state->d += 362437;
-  return state->x[4] + state->d;
-}
-
-float _rand_uniform(unsigned int x) {
-  return x * RAND_2POW32_INV + (RAND_2POW32_INV/2.0f);
-}
-
-float rand_uniform(xorwow_state * state)
-{
-  return _rand_uniform(rand_kernel(state));
-
-}
-
-double _rand_uniform_double_hq(unsigned int x, unsigned int y)
-{
-    unsigned long long z = (unsigned long long)x ^ ((unsigned long long)y << (53 - 32));
-    return z * RAND_2POW53_INV_DOUBLE + (RAND_2POW53_INV_DOUBLE/2.0);
-}
-
-double rand_uniform_double(xorwow_state * state)
-{
-  unsigned int x, y;
-  x = rand_kernel(state);
-  y = rand_kernel(state);
-  return _rand_uniform_double_hq(x, y);
-}
-
-__kernel void init_xorwow_kernel(__global xorwow_state* rand_states, const int nr_bootstraps, const int seed) {
-    int i = get_global_id(0);
-
-    if(i < nr_bootstraps) {
-      unsigned long long sequence = i;
-      xorwow_state state;
-      
-      unsigned int s0 = ((unsigned int)seed) ^ 0xaad26b49UL;
-      unsigned int s1 = (unsigned int)(sequence >> 32) ^ 0xf7dcefddUL;
-      unsigned int t0 = 1099087573UL * s0;
-      unsigned int t1 = 2591861531UL * s1;
-      state.d = 6615241 + t1 + t0;
-      state.x[0] = 123456789UL + t0;
-      state.x[1] = 362436069UL ^ t0;
-      state.x[2] = 521288629UL + t1;
-      state.x[3] = 88675123UL ^ t1;
-      state.x[4] = 5783321UL + t0;
-      
-      int matrix_num = 0;
-      while(sequence) {
-        for(unsigned int t = 0; t < (sequence & PRECALC_BLOCK_MASK); t++) {
-          matvec_inplace(state.x, precalc_xorwow_matrix[matrix_num]);
-        }
-        sequence >>= PRECALC_BLOCK_SIZE;
-        matrix_num++;
-      }
-      
-      rand_states[i] = state;
-    }
-
-}
-
-
-__kernel void bootstrap_kernel(__global xorwow_state* rand_states, const int nr_bootstraps, __global float *output, __global float *values, const int nr_of_values) {
-    int i = get_global_id(0);
-    float sum = 0;
-
-    if(i < nr_bootstraps) {
-      xorwow_state local_xorwow_state = rand_states[i];
-      #pragma unroll 8
-      for(int j = 0; j < nr_of_values; j++) {
-        sum += values[(int) floor(rand_uniform(&local_xorwow_state) * nr_of_values + 0.999999 - 1)];
-      }
-      output[i] = sum / nr_of_values;
-    }
-
-}
-
-__kernel void gen_random_kernel_int(__global xorwow_state* rand_states, __global int *output, const int n) {
-    int i = get_global_id(0);
-
-    if(i < n) {
-      xorwow_state local_xorwow_state = rand_states[i];
-      output[i] = rand_kernel(&local_xorwow_state);
-    }
-
-}
-
-__kernel void gen_random_kernel_float(__global xorwow_state* rand_states, __global float *output, const int n) {
-    int i = get_global_id(0);
-
-    if(i < n) {
-      xorwow_state local_xorwow_state = rand_states[i];
-      output[i] = rand_uniform(&local_xorwow_state);
-    }
-
-}
-
-__kernel void gen_random_kernel_double(__global xorwow_state* rand_states, __global double *output, const int n) {
-    int i = get_global_id(0);
-
-    if(i < n) {
-      xorwow_state local_xorwow_state = rand_states[i];
-      output[i] = rand_uniform_double(&local_xorwow_state);
-    }
-
-}
-
-
 unsigned int precalc_xorwow_matrix[32][800] = {
   {
     850664906UL, 2293210629UL, 1517805917UL, 1215500405UL, 1612415445UL, 645388200UL, 824349799UL, 3517232886UL, 4075591755UL, 3089899292UL, 4249786064UL, 3811424903UL, 1100783479UL, 53649761UL, 2817264826UL, 3159462529UL, 1654848550UL, 950025444UL, 3095510002UL, 4080567211UL, 4111078399UL, 3241719305UL, 2788212779UL, 4256963770UL, 2426893717UL, 4190211142UL, 1420776905UL, 3780537969UL, 1102912875UL, 1657948873UL, 3354905256UL, 2519610308UL,
@@ -1008,3 +870,140 @@ unsigned int precalc_xorwow_matrix[32][800] = {
     3925566467UL, 2413979948UL, 463637252UL, 3768636616UL, 3374572388UL, 2217956879UL, 791988933UL, 382210765UL, 1715859444UL, 3462446413UL, 971427992UL, 3255404695UL, 2001750035UL, 2214129237UL, 320812374UL, 3688098101UL, 920365480UL, 2819401059UL, 2932570681UL, 3749857130UL, 523943786UL, 1271514748UL, 4078439472UL, 3501181265UL, 2475869985UL, 1797996951UL, 2300820710UL, 3994893924UL, 1739992082UL, 2475950326UL, 3780826558UL, 1018851411UL,
   },
 };
+
+typedef struct t_xorwow_state {
+  unsigned int x[5];
+  unsigned int d;
+} xorwow_state;
+
+void matvec_inplace(unsigned int *vector, unsigned int *matrix)
+{
+  const int N = 5;
+  unsigned int result[N] = { 0 };
+  for(int i = 0; i < N; i++) {
+    for(int j = 0; j < 32; j++) {
+      if(vector[i] & (1 << j)) {
+        for(int k = 0; k < N; k++) {
+          result[k] ^= matrix[N * (i * 32 + j) + k];
+        }
+      }
+    }
+  }
+  for(int i = 0; i < N; i++) {
+    vector[i] = result[i];
+  }
+}
+
+unsigned int rand_kernel(xorwow_state *state) {
+  unsigned int t;
+  t = (state->x[0] ^ (state->x[0] >> 2));
+  state->x[0] = state->x[1];
+  state->x[1] = state->x[2];
+  state->x[2] = state->x[3];
+  state->x[3] = state->x[4];
+  state->x[4] = (state->x[4] ^ (state->x[4] <<4)) ^ (t ^ (t << 1));
+  state->d += 362437;
+  return state->x[4] + state->d;
+}
+
+float _rand_uniform(unsigned int x) {
+  return x * RAND_2POW32_INV + (RAND_2POW32_INV/2.0f);
+}
+
+float rand_uniform(xorwow_state * state)
+{
+  return _rand_uniform(rand_kernel(state));
+
+}
+
+double _rand_uniform_double_hq(unsigned int x, unsigned int y)
+{
+    unsigned long long z = (unsigned long long)x ^ ((unsigned long long)y << (53 - 32));
+    return z * RAND_2POW53_INV_DOUBLE + (RAND_2POW53_INV_DOUBLE/2.0);
+}
+
+double rand_uniform_double(xorwow_state * state)
+{
+  unsigned int x, y;
+  x = rand_kernel(state);
+  y = rand_kernel(state);
+  return _rand_uniform_double_hq(x, y);
+}
+
+__kernel void init_xorwow_kernel(__global xorwow_state* rand_states, const int nr_bootstraps, const int seed) {
+    int i = get_global_id(0);
+
+    if(i < nr_bootstraps) {
+      unsigned long long sequence = i;
+      xorwow_state state;
+      
+      unsigned int s0 = ((unsigned int)seed) ^ 0xaad26b49UL;
+      unsigned int s1 = (unsigned int)(sequence >> 32) ^ 0xf7dcefddUL;
+      unsigned int t0 = 1099087573UL * s0;
+      unsigned int t1 = 2591861531UL * s1;
+      state.d = 6615241 + t1 + t0;
+      state.x[0] = 123456789UL + t0;
+      state.x[1] = 362436069UL ^ t0;
+      state.x[2] = 521288629UL + t1;
+      state.x[3] = 88675123UL ^ t1;
+      state.x[4] = 5783321UL + t0;
+      
+      int matrix_num = 0;
+      while(sequence) {
+        for(unsigned int t = 0; t < (sequence & PRECALC_BLOCK_MASK); t++) {
+          matvec_inplace(state.x, precalc_xorwow_matrix[matrix_num]);
+        }
+        sequence >>= PRECALC_BLOCK_SIZE;
+        matrix_num++;
+      }
+      
+      rand_states[i] = state;
+    }
+
+}
+
+
+__kernel void bootstrap_kernel(__global xorwow_state* rand_states, const int nr_bootstraps, __global float *output, __global float *values, const int nr_of_values) {
+    int i = get_global_id(0);
+    float sum = 0;
+
+    if(i < nr_bootstraps) {
+      xorwow_state local_xorwow_state = rand_states[i];
+      #pragma unroll 8
+      for(int j = 0; j < nr_of_values; j++) {
+        sum += values[(int) floor(rand_uniform(&local_xorwow_state) * nr_of_values + 0.999999 - 1)];
+      }
+      output[i] = sum / nr_of_values;
+    }
+
+}
+
+__kernel void gen_random_kernel_int(__global xorwow_state* rand_states, __global int *output, const int n) {
+    int i = get_global_id(0);
+
+    if(i < n) {
+      xorwow_state local_xorwow_state = rand_states[i];
+      output[i] = rand_kernel(&local_xorwow_state);
+    }
+
+}
+
+__kernel void gen_random_kernel_float(__global xorwow_state* rand_states, __global float *output, const int n) {
+    int i = get_global_id(0);
+
+    if(i < n) {
+      xorwow_state local_xorwow_state = rand_states[i];
+      output[i] = rand_uniform(&local_xorwow_state);
+    }
+
+}
+
+__kernel void gen_random_kernel_double(__global xorwow_state* rand_states, __global double *output, const int n) {
+    int i = get_global_id(0);
+
+    if(i < n) {
+      xorwow_state local_xorwow_state = rand_states[i];
+      output[i] = rand_uniform_double(&local_xorwow_state);
+    }
+
+}
