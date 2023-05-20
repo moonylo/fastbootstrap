@@ -1,4 +1,3 @@
-#pragma once
 #define PRECALC_BLOCK_SIZE (2)
 #define PRECALC_BLOCK_MASK ((1<<PRECALC_BLOCK_SIZE)-1)
 

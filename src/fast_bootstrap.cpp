@@ -18,56 +18,44 @@ class opencl_bootstrap_manager {
   
   public:
 
-    opencl_bootstrap_manager(int bootstrap_samples, int seed) : bootstrap_samples(bootstrap_samples), seed(seed) {
+    opencl_bootstrap_manager(int nr_bootstraps_, int seed_)
+    {
       set_local_item_size(32);
+      set_parameters(nr_bootstraps_, seed_);
+    }
+  
+    void set_parameters(int nr_bootstraps_, int seed_) {
+      if (command_queue) {
+        CHECK_CL_ERROR(clFinish(command_queue));
+      }
+      if (buffer_rand_states) {
+        CHECK_CL_ERROR(clReleaseMemObject(buffer_rand_states));
+      }
+      if (buffer_output) {
+        CHECK_CL_ERROR(clReleaseMemObject(buffer_output));
+      }
+      
+      nr_bootstraps = nr_bootstraps_;
+      seed = seed_;
       setup_device();
     }
   
     void set_local_item_size(int item_size) {
       local_item_size = (size_t) item_size;
-      global_item_size = (size_t) local_item_size * ceil( ((float)bootstrap_samples) / ((float)local_item_size) );
+      global_item_size = (size_t) local_item_size * ceil( ((float) nr_bootstraps) / ((float) local_item_size) );
     }
 
-    Rcpp::NumericVector get_bootstrapped_means(Rcpp::NumericVector x) {
-      Rcpp::NumericVector out_r(bootstrap_samples);
-      
-      int nr_of_values = x.length();
-      int nr_of_values_not_na = nr_of_values;
-      T* h_values = new T[nr_of_values]();
-      int idx = 0;
-      for(int i = 0; i < nr_of_values; i++) {
-        if (Rcpp::NumericVector::is_na(x[i])) {
-          nr_of_values_not_na--;
-        } else {
-          h_values[idx] = x[i];
-          idx++;
-        }
-      }
-      if (nr_of_values_not_na == 0) {
-        for(int i = 0; i < bootstrap_samples; i++) {
-          out_r[i] = Rcpp::NumericVector::get_na();
-        }
-        return(out_r);
-      }
-      
-      
-      T* h_out = new T[bootstrap_samples];
-      
-      calc_bootstrap(h_values, h_out, nr_of_values_not_na);
-
-      
-      for(int i = 0; i < bootstrap_samples; i++) {
-        out_r[i] = h_out[i];
-      }
-      
-      delete [] h_values;
-      delete [] h_out;
-      
-      return(out_r);
+    std::vector<T> get_bootstrapped_means(std::vector<T> x) {
+      std::vector<T> h_out(nr_bootstraps);
+      calc_bootstrap_on_gpu(&x[0], &h_out[0], x.size());
+      return(h_out);
     }
   
-    
     ~opencl_bootstrap_manager() {
+
+    };
+    
+    void cleanup_device() {
       delete[] rand_states;
       CHECK_CL_ERROR(clFinish(command_queue));
       CHECK_CL_ERROR(clReleaseCommandQueue(command_queue));
@@ -76,11 +64,37 @@ class opencl_bootstrap_manager {
       CHECK_CL_ERROR(clReleaseKernel(bootstrap_kernel));
       CHECK_CL_ERROR(clReleaseMemObject(buffer_rand_states));
       CHECK_CL_ERROR(clReleaseMemObject(buffer_output));
-    };
+    }
     
+    std::vector<unsigned int> test_rand_gen_host(const int n = 10, const int seed = 0) {
+      std::vector<unsigned int> output(n);
+      xorwow_state *state = (xorwow_state*)malloc(n * sizeof(xorwow_state));
+      for(int i = 0; i < n; i++) {
+        init_xorwow(state + i, seed, i);
+        output[i] = rand(state + i);
+      }
+      return(output);
+    }
+    
+    std::vector<unsigned int> test_rand_gen_device(int n = 10) {
+      cl_int err;
+      const size_t cl_n = n;
+      std::vector<unsigned int> output(n);
+      cl_kernel gen_random_kernel_int = clCreateKernel(program, "gen_random_kernel_int", &err);
+      cl_mem buffer_output_test = clCreateBuffer(context, CL_MEM_READ_WRITE, n * sizeof(unsigned int), NULL, &err);
+      
+      CHECK_CL_ERROR(clSetKernelArg(gen_random_kernel_int, 0, sizeof(cl_mem), (void *)&buffer_rand_states));
+      CHECK_CL_ERROR(clSetKernelArg(gen_random_kernel_int, 1, sizeof(cl_mem), (void *)&buffer_output_test));
+      CHECK_CL_ERROR(clSetKernelArg(gen_random_kernel_int, 2, sizeof(int), (void *)&n));
+      CHECK_CL_ERROR(clEnqueueNDRangeKernel(command_queue, gen_random_kernel_int, 1, NULL, &cl_n, &cl_n, 0, NULL, NULL));
+
+      CHECK_CL_ERROR(clEnqueueReadBuffer(command_queue, buffer_output_test, CL_TRUE, 0, n * sizeof(unsigned int), &output[0], 0, NULL, NULL));
+      return(output);
+    }
     
   private:
-    int bootstrap_samples;
+    
+    int nr_bootstraps;
     cl_device_id device_id;
     int seed;
     size_t global_item_size;
@@ -90,9 +104,11 @@ class opencl_bootstrap_manager {
     cl_program program;
     cl_context context;
     cl_kernel bootstrap_kernel;
-    cl_command_queue command_queue;
-    cl_mem buffer_output;
-    cl_mem buffer_rand_states;
+    cl_kernel init_xorwow_kernel_kernel;
+    cl_command_queue command_queue = NULL;
+    cl_mem buffer_output = NULL;
+    cl_mem buffer_rand_states = NULL;
+    
     
     void set_default_device_id() {
       cl_platform_id platform_id = NULL;
@@ -105,14 +121,29 @@ class opencl_bootstrap_manager {
     }
     
     void set_kernel_source() {
-      kernel_source_code = get_kernel_source();
+      kernel_source_code = get_kernel_source("inst/include/kernels.cl");
     }
     
-    void init_rand_states() {
-      rand_states = new xorwow_state[bootstrap_samples];
-      for(int i = 0; i < bootstrap_samples; i++) {
+    void init_rand_states_host() {
+      rand_states = new xorwow_state[nr_bootstraps];
+      for(int i = 0; i < nr_bootstraps; i++) {
         init_xorwow(rand_states + i, seed, (unsigned long long) i);
       }
+    }
+    
+    void init_rand_states_device() {
+      cl_int err;
+      
+      buffer_rand_states = clCreateBuffer(context, CL_MEM_READ_WRITE, nr_bootstraps * sizeof(xorwow_state), NULL, &err);
+
+      init_xorwow_kernel_kernel = clCreateKernel(program, "init_xorwow_kernel", &err);
+      CHECK_CL_ERROR_AFTER(err);
+      CHECK_CL_ERROR(clSetKernelArg(init_xorwow_kernel_kernel, 0, sizeof(cl_mem), (void *)&buffer_rand_states));
+      CHECK_CL_ERROR(clSetKernelArg(init_xorwow_kernel_kernel, 1, sizeof(int), (void *)&nr_bootstraps));
+      CHECK_CL_ERROR(clSetKernelArg(init_xorwow_kernel_kernel, 2, sizeof(int), (void *)&seed));
+
+      CHECK_CL_ERROR(clEnqueueNDRangeKernel(command_queue, init_xorwow_kernel_kernel, 1, NULL, &global_item_size, &local_item_size, 0, NULL, NULL));
+      
     }
 
     void setup_device()
@@ -121,7 +152,6 @@ class opencl_bootstrap_manager {
       
       set_default_device_id();
       set_kernel_source();
-      init_rand_states();
 
       context = clCreateContext(NULL, 1, &device_id, NULL, NULL, &err);
       CHECK_CL_ERROR_AFTER(err);
@@ -129,7 +159,7 @@ class opencl_bootstrap_manager {
       program = clCreateProgramWithSource(context, 1, (const char **)&kernel_source_code.str, (const size_t *)&kernel_source_code.size, &err);
       CHECK_CL_ERROR_AFTER(err);
 
-      err = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
+      err = clBuildProgram(program, 1, &device_id, "-Iinst/include", NULL, NULL);
       CHECK_CL_PROGRAM_ERROR(err, program, device_id);
       CHECK_CL_ERROR_AFTER(err);
       
@@ -139,56 +169,58 @@ class opencl_bootstrap_manager {
       command_queue = clCreateCommandQueue(context, device_id, 0, &err);
       CHECK_CL_ERROR_AFTER(err);
       
-      buffer_output = clCreateBuffer(context, CL_MEM_WRITE_ONLY, bootstrap_samples * sizeof(T), NULL, &err);
+      buffer_output = clCreateBuffer(context, CL_MEM_WRITE_ONLY, nr_bootstraps * sizeof(T), NULL, &err);
       CHECK_CL_ERROR_AFTER(err);
       
-      buffer_rand_states = clCreateBuffer(context, CL_MEM_READ_ONLY, bootstrap_samples * sizeof(xorwow_state), NULL, &err);
-      CHECK_CL_ERROR_AFTER(err);
-      CHECK_CL_ERROR(clEnqueueWriteBuffer(command_queue, buffer_rand_states, CL_TRUE, 0, bootstrap_samples * sizeof(xorwow_state), rand_states, 0, NULL, NULL));
+      //init_rand_states_host();
+      //buffer_rand_states = clCreateBuffer(context, CL_MEM_READ_ONLY, nr_bootstraps * sizeof(xorwow_state), NULL, &err);
+      //CHECK_CL_ERROR_AFTER(err);
+      //CHECK_CL_ERROR(clEnqueueWriteBuffer(command_queue, buffer_rand_states, CL_TRUE, 0, nr_bootstraps * sizeof(xorwow_state), rand_states, 0, NULL, NULL));
       
+      init_rand_states_device();
       
       CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 0, sizeof(cl_mem), (void *)&buffer_rand_states));
-      CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 1, sizeof(int), (void *)&bootstrap_samples));
+      CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 1, sizeof(int), (int *)&nr_bootstraps));
       CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 2, sizeof(cl_mem), (void *)&buffer_output));
       
     }
     
-    void calc_bootstrap(T* h_values, T* h_output, int nr_of_values) {
+    void calc_bootstrap_on_gpu(T* values, T* h_out, int nr_values) {
       
       cl_int err;
-
-      cl_mem d_values = clCreateBuffer(context, CL_MEM_READ_ONLY, nr_of_values * sizeof(T), NULL, &err);
+      
+      cl_mem d_values = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, nr_values * sizeof(T), values, &err);
       CHECK_CL_ERROR_AFTER(err);
-
-      CHECK_CL_ERROR(clEnqueueWriteBuffer(command_queue, d_values, CL_TRUE, 0, nr_of_values * sizeof(T), h_values, 0, NULL, NULL));
       CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 3, sizeof(cl_mem), (void *)&d_values));
-      CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 4, sizeof(int), (void *)&nr_of_values));
+      CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 4, sizeof(int), (void *)&nr_values));
       CHECK_CL_ERROR(clEnqueueNDRangeKernel(command_queue, bootstrap_kernel, 1, NULL, &global_item_size, &local_item_size, 0, NULL, NULL));
-      CHECK_CL_ERROR(clEnqueueReadBuffer(command_queue, buffer_output, CL_TRUE, 0, bootstrap_samples * sizeof(T), h_output, 0, NULL, NULL));
+      CHECK_CL_ERROR(clEnqueueReadBuffer(command_queue, buffer_output, CL_TRUE, 0, nr_bootstraps * sizeof(T), h_out, 0, NULL, NULL));
       
       CHECK_CL_ERROR(clReleaseMemObject(d_values));
     }
 };
 
-// [[Rcpp::export]]
-Rcpp::NumericVector test_rand_gen_host(const int n, const int seed = 0) {
-  Rcpp::NumericVector output(n);
-  xorwow_state *state = (xorwow_state*)malloc(n * sizeof(xorwow_state));
-  for(int i = 0; i < n; i++) {
-    init_xorwow(state + i, seed, i);
-    output[i] = rand(state + i);
-  }
-  return(output);
-}
 
 typedef opencl_bootstrap_manager<float> opencl_bootstrap_manager_float;
+
+void finalizer_opencl_bootstrap_manager(opencl_bootstrap_manager_float* ptr){
+  ptr->cleanup_device();
+}
 
 RCPP_EXPOSED_CLASS_NODECL(opencl_bootstrap_manager_float)
 RCPP_MODULE(opencl_bootstrap_manager_float) {
   Rcpp::class_<opencl_bootstrap_manager_float>("opencl_bootstrap_manager_float")
   
-  .constructor<int,int>()
+  .constructor<int,int>("sets the nr of bootstrap samples and the seed")
   .method("get_bootstrapped_means", &opencl_bootstrap_manager_float::get_bootstrapped_means, "get bootstrapped means for numeric vector")
   .method("set_local_item_size" ,&opencl_bootstrap_manager_float::set_local_item_size, "set opencl local item size (default is 32)")
+  .method("set_parameters", &opencl_bootstrap_manager_float::set_parameters, "set the nr of bootstrap samples and the seed")
+  .method("test_rand_gen_host", &opencl_bootstrap_manager_float::test_rand_gen_host, "test random numbers generated from host")
+  .method("test_rand_gen_device", &opencl_bootstrap_manager_float::test_rand_gen_device, "test random numbers generated from device")
+  .finalizer(finalizer_opencl_bootstrap_manager )
   ;
+  
+  Rcpp::function("print_opencl_platforms", &print_opencl_platforms, "print all available opencl platforms");
+  Rcpp::function("print_opencl_devices", &print_opencl_devices, "print all available opencl devices");
 }
+

@@ -13265,7 +13265,7 @@
     },
     {
         "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/opencl_utilities.h",
-        "file_last_write": 1684440829.0,
+        "file_last_write": 1684528237.0,
         "definitions": [
             {
                 "usr": "c:opencl_utilities.h@44@macro@MAX_SOURCE_SIZE",
@@ -13328,10 +13328,10 @@
                 "hidden": false
             },
             {
-                "usr": "c:@F@get_kernel_source#",
+                "usr": "c:@F@get_kernel_source#*1C#",
                 "kind": 6,
                 "parent_name": "",
-                "name": "get_kernel_source",
+                "name": "get_kernel_source(const char *)",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/opencl_utilities.h",
                 "line": 122,
                 "column": 15,
@@ -13343,7 +13343,7 @@
                 "parent_name": "",
                 "name": "print_opencl_devices",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/opencl_utilities.h",
-                "line": 134,
+                "line": 135,
                 "column": 6,
                 "hidden": false
             },
@@ -13353,7 +13353,7 @@
                 "parent_name": "",
                 "name": "print_opencl_platforms",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/opencl_utilities.h",
-                "line": 202,
+                "line": 204,
                 "column": 6,
                 "hidden": false
             }
@@ -13361,26 +13361,53 @@
         "hidden": false
     },
     {
-        "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/random_generator/precalc.h",
-        "file_last_write": 1683832215.0,
+        "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/precalc.h",
+        "file_last_write": 1684613492.0,
         "definitions": [
             {
-                "usr": "c:precalc.h@22@macro@PRECALC_BLOCK_SIZE",
+                "usr": "c:precalc.h@8@macro@PRECALC_BLOCK_SIZE",
                 "kind": 9,
                 "parent_name": "",
                 "name": "PRECALC_BLOCK_SIZE",
-                "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/random_generator/precalc.h",
-                "line": 2,
+                "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/precalc.h",
+                "line": 1,
                 "column": 9,
                 "hidden": false
             },
             {
-                "usr": "c:precalc.h@54@macro@PRECALC_BLOCK_MASK",
+                "usr": "c:precalc.h@40@macro@PRECALC_BLOCK_MASK",
+                "kind": 9,
+                "parent_name": "",
+                "name": "PRECALC_BLOCK_MASK",
+                "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/precalc.h",
+                "line": 2,
+                "column": 9,
+                "hidden": false
+            }
+        ],
+        "hidden": false
+    },
+    {
+        "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/random_generator/precalc.h",
+        "file_last_write": 1684613492.0,
+        "definitions": [
+            {
+                "usr": "c:precalc.h@8@macro@PRECALC_BLOCK_SIZE",
+                "kind": 9,
+                "parent_name": "",
+                "name": "PRECALC_BLOCK_SIZE",
+                "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/random_generator/precalc.h",
+                "line": 1,
+                "column": 9,
+                "hidden": false
+            },
+            {
+                "usr": "c:precalc.h@40@macro@PRECALC_BLOCK_MASK",
                 "kind": 9,
                 "parent_name": "",
                 "name": "PRECALC_BLOCK_MASK",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/random_generator/precalc.h",
-                "line": 3,
+                "line": 2,
                 "column": 9,
                 "hidden": false
             }
@@ -13456,7 +13483,7 @@
     },
     {
         "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/src/fast_bootstrap.cpp",
-        "file_last_write": 1684440957.0,
+        "file_last_write": 1684613865.0,
         "definitions": [
             {
                 "usr": "c:fast_bootstrap.cpp@29@macro@CL_USE_DEPRECATED_OPENCL_1_2_APIS",
@@ -13489,23 +13516,23 @@
                 "hidden": false
             },
             {
-                "usr": "c:@F@test_rand_gen_host#1I#1I#",
-                "kind": 6,
-                "parent_name": "",
-                "name": "test_rand_gen_host(const int, const int)",
-                "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/src/fast_bootstrap.cpp",
-                "line": 174,
-                "column": 21,
-                "hidden": false
-            },
-            {
                 "usr": "c:fast_bootstrap.cpp@T@opencl_bootstrap_manager_float",
                 "kind": 8,
                 "parent_name": "",
                 "name": "opencl_bootstrap_manager_float",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/src/fast_bootstrap.cpp",
-                "line": 184,
+                "line": 213,
                 "column": 41,
+                "hidden": false
+            },
+            {
+                "usr": "c:@F@finalizer_opencl_bootstrap_manager#*$@S@opencl_bootstrap_manager>#f#",
+                "kind": 6,
+                "parent_name": "",
+                "name": "finalizer_opencl_bootstrap_manager(opencl_bootstrap_manager_float *)",
+                "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/src/fast_bootstrap.cpp",
+                "line": 215,
+                "column": 6,
                 "hidden": false
             }
         ],

@@ -119,11 +119,11 @@ typedef struct kernel_source {
   size_t size;
 } kernel_source;
 
-kernel_source get_kernel_source()
+kernel_source get_kernel_source(const char* path_to_file)
 {
   kernel_source s;
   FILE *fp;
-  fp = fopen("inst/include/kernels.cl", "r");
+  fp = fopen(path_to_file, "r");
   s.str = (char*)malloc(MAX_SOURCE_SIZE);
   s.size = fread( s.str, 1, MAX_SOURCE_SIZE, fp);
   fclose( fp );
@@ -131,6 +131,7 @@ kernel_source get_kernel_source()
   return s;
 }
 
+// [[Rcpp::export]]
 void print_opencl_devices() {
   
   char* value;
@@ -199,6 +200,7 @@ void print_opencl_devices() {
   
 }
 
+// [[Rcpp::export]]
 void print_opencl_platforms() {
   
   char* info;

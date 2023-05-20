@@ -1,6 +1,6 @@
 {
     "dialog-state": {
-        "query": "a.cl.bin",
+        "query": "bootstrap_samples",
         "path": "",
         "regex": false,
         "caseSensitive": false,
@@ -9,7 +9,7 @@
         "useGitGrep": true,
         "excludeGitIgnore": true,
         "excludeFilePatterns": [],
-        "resultsCount": 0,
+        "resultsCount": 15,
         "errorCount": 0,
         "replaceErrors": "",
         "projectRelative": true
