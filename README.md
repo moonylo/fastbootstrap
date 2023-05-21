@@ -5,19 +5,24 @@ This package uses the GPU via OpenCL to calculate ordinary, non-parametric boots
 # Installation & System Requirements
 
 ## Windows
-    * You need an OpenCL 1.2 capable device. The code is currently hardcoded for GPUs.
-    * You need an OpenCL runtime installed 
-        * For Nvidia, this comes with the GPU driver.
-    * If you want to build the package from source, you need the OpenCL.dll. For all my computers this has already been in `C:\Windows\System32\OpenCL.dll`. If this is not the case for you, let me know / let me know how you got it installed.
+* You need an OpenCL 1.2 capable device. The code is currently hardcoded for GPUs.
+* You need an OpenCL runtime installed 
+    * For Nvidia, this comes with the GPU driver.
+* If you want to build the package from source, you need the OpenCL.dll. For all my computers this has already been in `C:\Windows\System32\OpenCL.dll`. If this is not the case for you, let me know / let me know how you got it installed.
 
 ## Unix
-    * Not attempted yet. But if it works on Windows so easily, Unix should be no problem.
+* Not attempted yet. But if it works on Windows so easily, Unix should be no problem.
 
 
 # Random Number Generator
 
-As the code runs on the GPU and thus can't access R's random functions, a pseudo-random generator had to be implemented. For that CUDAs XORWOW implementation in cuRand is used. For every bootstrap replication a different sequence is created, which allows for non-overlapping periods of 2^67-1 (which would be the upper limit for the used vector). Theoretically that would leave space for 2^123 distinct sequences, but due to the implementation it already breaks around 4-5 Million. Your mileage may vary.
-The same seed will produce the same random numbers every time. This also allows you to use this tool for paired observations. Or for metrics, which need the mean / sum of multiple variables (e.g. if your metric is mean(x) / mean(y)).
+The code runs on the GPU and thus can't access R's random functions. So a pseudo-random generator had to be implemented.
+* CUDAs XORWOW implementation in cuRand is used.
+    * For every bootstrap replication a different sequence is created, which allows for non-overlapping periods of 2^67-1.
+    * Theoretically that would leave space for 2^123 distinct sequences, but due to the implementation it already breaks around 4-5 billion from my testing.
+* The same seed will produce the same random numbers every time.
+    * This allows you to use this tool for paired observations.
+    * Or for metrics, which need the mean / sum of multiple variables (e.g. if your metric is `mean(x) / mean(y)`).
 
 # Usage
 
@@ -28,9 +33,9 @@ df <- data.frame(x1 = rnorm(5000, 50))
 replications <- 10000L
 seed <- 2023L
 
-# Create an instance of the bootstrap manager and initialize it with the number of bootstrap_samples and the seed
+# Create an instance of the bootstrap manager and initialize it with the number of replications and the seed
 bs_mgr <- new(opencl_bootstrap_manager_float, replications, seed)
-# Run bootstraps for mean(df$x1)
+# Run bootstrap for mean(df$x1)
 output <- bs_mgr$get_bootstrapped_means(df$x1)
 
 # Compare output with the simplest version in base R
