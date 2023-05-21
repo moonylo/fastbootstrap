@@ -930,10 +930,10 @@ double rand_uniform_double(xorwow_state * state)
   return _rand_uniform_double_hq(x, y);
 }
 
-__kernel void init_xorwow_kernel(__global xorwow_state* rand_states, const int nr_bootstraps, const int seed) {
+__kernel void init_xorwow_kernel(__global xorwow_state* rand_states, const int replications, const int seed) {
     int i = get_global_id(0);
 
-    if(i < nr_bootstraps) {
+    if(i < replications) {
       unsigned long long sequence = i;
       xorwow_state state;
       
@@ -963,11 +963,11 @@ __kernel void init_xorwow_kernel(__global xorwow_state* rand_states, const int n
 }
 
 
-__kernel void bootstrap_kernel(__global xorwow_state* rand_states, const int nr_bootstraps, __global float *output, __global float *values, const int nr_of_values) {
+__kernel void bootstrap_kernel(__global xorwow_state* rand_states, const int replications, __global float *output, __global float *values, const int nr_of_values) {
     int i = get_global_id(0);
     float sum = 0;
 
-    if(i < nr_bootstraps) {
+    if(i < replications) {
       xorwow_state local_xorwow_state = rand_states[i];
       #pragma unroll 8
       for(int j = 0; j < nr_of_values; j++) {

@@ -1,15 +1,13 @@
 Package: fastbootstrap
 Type: Package
-Title: Fast bootstrap using the GPU via OpenCL and RcppParallel
+Title: Fast bootstrap using the GPU via OpenCL
 Version: 1.0
 Date: 2023-05-11
 Author: Jan Stolle
 Maintainer: Jan Stolle <stolle.jan@gmail.com>
-Description: This package is supposed to speed up bootstrapping
-    on large data. The only statistic currently allowed is the mean.
-    The possibility for quantiles might be added in the future.
-    If OpenCL is available, the package will use the GPU. As a
-    fallback it will use RcppParallel.
-License: GPL (>= 2)
+Description: This package is speeds up ordinary non-parametric
+    bootstrapping on large data. The only statistic currently
+    allowed is the mean.
+License: MIT + file LICENSE
 Imports: methods, Rcpp (>= 1.0.10)
 LinkingTo: Rcpp

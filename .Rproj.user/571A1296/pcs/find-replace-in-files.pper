@@ -1,6 +1,6 @@
 {
     "dialog-state": {
-        "query": "bootstrap_samples",
+        "query": "nr_bootstraps",
         "path": "",
         "regex": false,
         "caseSensitive": false,
@@ -9,7 +9,7 @@
         "useGitGrep": true,
         "excludeGitIgnore": true,
         "excludeFilePatterns": [],
-        "resultsCount": 15,
+        "resultsCount": 19,
         "errorCount": 0,
         "replaceErrors": "",
         "projectRelative": true

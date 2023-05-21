@@ -85,9 +85,9 @@ void check(T err, char const* const func, char const* const file, int const line
 {
   if (err != CL_SUCCESS)
   {
-    std::cerr << "OpenCL runtime error at: " << file << ":" << line << std::endl;
-    std::cerr << getErrorString(err) << " " << func << std::endl;
-    throw std::runtime_error("");
+    Rcpp::Rcerr << "OpenCL runtime error at: " << file << ":" << line << std::endl;
+    Rcpp::Rcerr << getErrorString(err) << " " << func << std::endl;
+    Rcpp::stop("");
   }
 }
 #define CHECK_CL_ERROR_AFTER(val) checkAfter((val), __FILE__, __LINE__)
@@ -96,9 +96,9 @@ void checkAfter(T err, char const* const file, int const line)
 {
   if (err != CL_SUCCESS)
   {
-    std::cerr << "OpenCL runtime error at: " << file << ":" << line << std::endl;
-    std::cerr << getErrorString(err) << std::endl;
-    throw std::runtime_error("");
+    Rcpp::Rcerr << "OpenCL runtime error at: " << file << ":" << line << std::endl;
+    Rcpp::Rcerr << getErrorString(err) << std::endl;
+    Rcpp::stop("");
   }
 }
 
@@ -110,6 +110,7 @@ void CHECK_CL_PROGRAM_ERROR(T err, cl_program program, cl_device_id device_id) {
     char *log = (char *) malloc(log_size);
     clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
     printf("%s\n", log);
+    Rcpp::stop("");
   }
 }
 

@@ -5,12 +5,6 @@
 
 #include <CL/cl.h>
 #include <opencl_utilities.h>
-#include <fstream>
-#include <string>
-#include <stdint.h>
-#include <stdio.h>
-#include <cmath>
-#include <unistd.h>
 
 typedef struct t_xorwow_state {
   cl_uint x[5];
@@ -22,35 +16,23 @@ class opencl_bootstrap_manager {
   
   public:
 
-    opencl_bootstrap_manager(int nr_bootstraps_, int seed_)
+    opencl_bootstrap_manager(int replications_, int seed_)
     {
       set_local_item_size(32);
-      set_parameters(nr_bootstraps_, seed_);
+      setup_device(replications_, seed_);
     }
   
-    void set_parameters(int nr_bootstraps_, int seed_) {
-      if (command_queue) {
-        CHECK_CL_ERROR(clFinish(command_queue));
-      }
-      if (buffer_rand_states) {
-        CHECK_CL_ERROR(clReleaseMemObject(buffer_rand_states));
-      }
-      if (buffer_output) {
-        CHECK_CL_ERROR(clReleaseMemObject(buffer_output));
-      }
-      
-      nr_bootstraps = nr_bootstraps_;
-      seed = seed_;
-      setup_device();
+    void set_parameters(int replications_, int seed_) {
+      setup_device(replications_, seed_);
     }
   
     void set_local_item_size(int item_size) {
       local_item_size = (size_t) item_size;
-      global_item_size = (size_t) local_item_size * ceil( ((float) nr_bootstraps) / ((float) local_item_size) );
+      global_item_size = (size_t) local_item_size * ceil( ((float) replications) / ((float) local_item_size) );
     }
 
     std::vector<T> get_bootstrapped_means(std::vector<T> x) {
-      std::vector<T> h_out(nr_bootstraps);
+      std::vector<T> h_out(replications);
       calc_bootstrap_on_gpu(&x[0], &h_out[0], x.size());
       return(h_out);
     }
@@ -65,7 +47,7 @@ class opencl_bootstrap_manager {
       CHECK_CL_ERROR(clReleaseProgram(program));
       CHECK_CL_ERROR(clReleaseContext(context));
       CHECK_CL_ERROR(clReleaseKernel(bootstrap_kernel));
-      CHECK_CL_ERROR(clReleaseKernel(init_xorwow_kernel_kernel));
+      CHECK_CL_ERROR(clReleaseKernel(init_xorwow_kernel));
       CHECK_CL_ERROR(clReleaseMemObject(buffer_rand_states));
       CHECK_CL_ERROR(clReleaseMemObject(buffer_output));
     }
@@ -88,7 +70,7 @@ class opencl_bootstrap_manager {
     
   private:
     
-    int nr_bootstraps;
+    int replications;
     cl_device_id device_id;
     int seed;
     size_t global_item_size;
@@ -97,7 +79,7 @@ class opencl_bootstrap_manager {
     cl_program program;
     cl_context context;
     cl_kernel bootstrap_kernel;
-    cl_kernel init_xorwow_kernel_kernel;
+    cl_kernel init_xorwow_kernel;
     cl_command_queue command_queue = NULL;
     cl_mem buffer_output = NULL;
     cl_mem buffer_rand_states = NULL;
@@ -120,21 +102,34 @@ class opencl_bootstrap_manager {
     void init_rand_states_device() {
       cl_int err;
       
-      buffer_rand_states = clCreateBuffer(context, CL_MEM_READ_WRITE, nr_bootstraps * sizeof(xorwow_state), NULL, &err);
+      buffer_rand_states = clCreateBuffer(context, CL_MEM_READ_WRITE, replications * sizeof(xorwow_state), NULL, &err);
 
-      init_xorwow_kernel_kernel = clCreateKernel(program, "init_xorwow_kernel", &err);
+      init_xorwow_kernel = clCreateKernel(program, "init_xorwow_kernel", &err);
       CHECK_CL_ERROR_AFTER(err);
-      CHECK_CL_ERROR(clSetKernelArg(init_xorwow_kernel_kernel, 0, sizeof(cl_mem), (void *)&buffer_rand_states));
-      CHECK_CL_ERROR(clSetKernelArg(init_xorwow_kernel_kernel, 1, sizeof(int), (void *)&nr_bootstraps));
-      CHECK_CL_ERROR(clSetKernelArg(init_xorwow_kernel_kernel, 2, sizeof(int), (void *)&seed));
+      CHECK_CL_ERROR(clSetKernelArg(init_xorwow_kernel, 0, sizeof(cl_mem), (void *)&buffer_rand_states));
+      CHECK_CL_ERROR(clSetKernelArg(init_xorwow_kernel, 1, sizeof(int), (void *)&replications));
+      CHECK_CL_ERROR(clSetKernelArg(init_xorwow_kernel, 2, sizeof(int), (void *)&seed));
 
-      CHECK_CL_ERROR(clEnqueueNDRangeKernel(command_queue, init_xorwow_kernel_kernel, 1, NULL, &global_item_size, &local_item_size, 0, NULL, NULL));
+      CHECK_CL_ERROR(clEnqueueNDRangeKernel(command_queue, init_xorwow_kernel, 1, NULL, &global_item_size, &local_item_size, 0, NULL, NULL));
       
     }
 
-    void setup_device()
+    void setup_device(int replications_, int seed_)
     {
       cl_int err;
+      
+      if (command_queue) {
+        CHECK_CL_ERROR(clFinish(command_queue));
+      }
+      if (buffer_rand_states) {
+        CHECK_CL_ERROR(clReleaseMemObject(buffer_rand_states));
+      }
+      if (buffer_output) {
+        CHECK_CL_ERROR(clReleaseMemObject(buffer_output));
+      }
+      
+      replications = replications_;
+      seed = seed_;
       
       set_default_device_id();
       set_kernel_source();
@@ -145,7 +140,7 @@ class opencl_bootstrap_manager {
       program = clCreateProgramWithSource(context, 1, (const char **)&kernel_source_code.str, (const size_t *)&kernel_source_code.size, &err);
       CHECK_CL_ERROR_AFTER(err);
 
-      err = clBuildProgram(program, 1, &device_id, "-Iinst/include", NULL, NULL);
+      err = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
       CHECK_CL_PROGRAM_ERROR(err, program, device_id);
       CHECK_CL_ERROR_AFTER(err);
       
@@ -155,13 +150,13 @@ class opencl_bootstrap_manager {
       command_queue = clCreateCommandQueue(context, device_id, 0, &err);
       CHECK_CL_ERROR_AFTER(err);
       
-      buffer_output = clCreateBuffer(context, CL_MEM_WRITE_ONLY, nr_bootstraps * sizeof(T), NULL, &err);
+      buffer_output = clCreateBuffer(context, CL_MEM_WRITE_ONLY, replications * sizeof(T), NULL, &err);
       CHECK_CL_ERROR_AFTER(err);
       
       init_rand_states_device();
       
       CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 0, sizeof(cl_mem), (void *)&buffer_rand_states));
-      CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 1, sizeof(int), (int *)&nr_bootstraps));
+      CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 1, sizeof(int), (int *)&replications));
       CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 2, sizeof(cl_mem), (void *)&buffer_output));
       
     }
@@ -175,7 +170,7 @@ class opencl_bootstrap_manager {
       CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 3, sizeof(cl_mem), (void *)&d_values));
       CHECK_CL_ERROR(clSetKernelArg(bootstrap_kernel, 4, sizeof(int), (void *)&nr_values));
       CHECK_CL_ERROR(clEnqueueNDRangeKernel(command_queue, bootstrap_kernel, 1, NULL, &global_item_size, &local_item_size, 0, NULL, NULL));
-      CHECK_CL_ERROR(clEnqueueReadBuffer(command_queue, buffer_output, CL_TRUE, 0, nr_bootstraps * sizeof(T), h_out, 0, NULL, NULL));
+      CHECK_CL_ERROR(clEnqueueReadBuffer(command_queue, buffer_output, CL_TRUE, 0, replications * sizeof(T), h_out, 0, NULL, NULL));
       
       CHECK_CL_ERROR(clReleaseMemObject(d_values));
     }
@@ -195,8 +190,8 @@ RCPP_MODULE(opencl_bootstrap_manager_float) {
   .constructor<int,int>("sets the nr of bootstrap samples and the seed")
   .method("get_bootstrapped_means", &opencl_bootstrap_manager_float::get_bootstrapped_means, "get bootstrapped means for numeric vector")
   .method("set_local_item_size" ,&opencl_bootstrap_manager_float::set_local_item_size, "set opencl local item size (default is 32)")
-  .method("set_parameters", &opencl_bootstrap_manager_float::set_parameters, "set the nr of bootstrap samples and the seed")
-  .method("test_rand_gen_device", &opencl_bootstrap_manager_float::test_rand_gen_device, "test random numbers generated from device")
+  .method("set_parameters", &opencl_bootstrap_manager_float::set_parameters, "set the nr of bootstrap samples and the seed, which then prepares the rand states")
+  .method("test_rand_gen_device", &opencl_bootstrap_manager_float::test_rand_gen_device, "test random numbers generated on device")
   .finalizer(finalizer_opencl_bootstrap_manager )
   ;
   

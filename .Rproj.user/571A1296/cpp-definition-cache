@@ -13265,7 +13265,7 @@
     },
     {
         "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/opencl_utilities.h",
-        "file_last_write": 1684614314.0,
+        "file_last_write": 1684615508.0,
         "definitions": [
             {
                 "usr": "c:opencl_utilities.h@30@macro@MAX_SOURCE_SIZE",
@@ -13288,7 +13288,7 @@
                 "hidden": false
             },
             {
-                "usr": "c:opencl_utilities.h@3828@macro@CHECK_CL_ERROR_AFTER",
+                "usr": "c:opencl_utilities.h@3818@macro@CHECK_CL_ERROR_AFTER",
                 "kind": 9,
                 "parent_name": "",
                 "name": "CHECK_CL_ERROR_AFTER",
@@ -13313,7 +13313,7 @@
                 "parent_name": "",
                 "name": "kernel_source",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/opencl_utilities.h",
-                "line": 116,
+                "line": 117,
                 "column": 16,
                 "hidden": false
             },
@@ -13323,7 +13323,7 @@
                 "parent_name": "",
                 "name": "kernel_source",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/opencl_utilities.h",
-                "line": 119,
+                "line": 120,
                 "column": 3,
                 "hidden": false
             },
@@ -13333,7 +13333,7 @@
                 "parent_name": "",
                 "name": "get_kernel_source(const char *)",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/opencl_utilities.h",
-                "line": 121,
+                "line": 122,
                 "column": 15,
                 "hidden": false
             },
@@ -13343,7 +13343,7 @@
                 "parent_name": "",
                 "name": "print_opencl_devices",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/opencl_utilities.h",
-                "line": 134,
+                "line": 135,
                 "column": 6,
                 "hidden": false
             },
@@ -13353,7 +13353,7 @@
                 "parent_name": "",
                 "name": "print_opencl_platforms",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/inst/include/opencl_utilities.h",
-                "line": 203,
+                "line": 204,
                 "column": 6,
                 "hidden": false
             }
@@ -13362,7 +13362,7 @@
     },
     {
         "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/src/fast_bootstrap.cpp",
-        "file_last_write": 1684614340.0,
+        "file_last_write": 1684692699.0,
         "definitions": [
             {
                 "usr": "c:fast_bootstrap.cpp@29@macro@CL_USE_DEPRECATED_OPENCL_1_2_APIS",
@@ -13390,7 +13390,7 @@
                 "parent_name": "",
                 "name": "t_xorwow_state",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/src/fast_bootstrap.cpp",
-                "line": 15,
+                "line": 9,
                 "column": 16,
                 "hidden": false
             },
@@ -13400,7 +13400,7 @@
                 "parent_name": "",
                 "name": "xorwow_state",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/src/fast_bootstrap.cpp",
-                "line": 18,
+                "line": 12,
                 "column": 3,
                 "hidden": false
             },
@@ -13410,7 +13410,7 @@
                 "parent_name": "",
                 "name": "opencl_bootstrap_manager<T>",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/src/fast_bootstrap.cpp",
-                "line": 21,
+                "line": 15,
                 "column": 7,
                 "hidden": false
             },
@@ -13420,7 +13420,7 @@
                 "parent_name": "",
                 "name": "opencl_bootstrap_manager_float",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/src/fast_bootstrap.cpp",
-                "line": 186,
+                "line": 180,
                 "column": 41,
                 "hidden": false
             },
@@ -13430,7 +13430,7 @@
                 "parent_name": "",
                 "name": "finalizer_opencl_bootstrap_manager(opencl_bootstrap_manager_float *)",
                 "file": "C:/Users/stoll/Documents/GitHub/fastbootstrap/src/fast_bootstrap.cpp",
-                "line": 188,
+                "line": 182,
                 "column": 6,
                 "hidden": false
             }
